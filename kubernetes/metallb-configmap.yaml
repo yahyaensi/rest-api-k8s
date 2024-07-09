@@ -1,0 +1,22 @@
+# Minikube does not support LoadBalncer out of the box, in order to be able to use it within minikube we must enable 
+# MetalLB which is a load-balancer implementation for bare metal Kubernetes clusters, using standard routing protocols.
+# - Enable MetalLB addon in Minikube:  minikube addons enable metallb
+# - Verify that MetalLB components are running: kubectl get all -n metallb-system
+# - Delete default configmap: kubectl delete configmap config -n metallb-system
+# - Install this configMap to activate MetalLB: kubectl create -f metallb-configmap.yaml
+# - Check that the config has been created: kubectl describe cm config -n metallb-system
+# - Create LoadBalancer: kubectl apply -f ./kubernetes/4-loadbalancer-service.yaml
+# - Verify that LoadBalancer has an ExternalIP: kubectl get service -o wide
+# - If you want to delete all MetalLB components: kubectl delete all --all -n metallb-system
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: metallb-system
+  name: config
+data:
+  config: |
+    address-pools:
+    - name: default
+      protocol: layer2
+      addresses:
+      - 192.168.49.2-192.168.49.3

@@ -1,0 +1,63 @@
+# apiVersion: autoscaling/v1 est la version par défaut et ne vous permet d'effectuer un autoscaling qu'en fonction de l'utilisation du processeur.
+# Pour effectuer un autoscaling à partir d'autres métriques, il est recommandé d'utiliser la version apiVersion: autoscaling/v2.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rest-api-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rest-api-deployment
+  minReplicas: 3
+  maxReplicas: 10
+  # targetCPUUtilizationPercentage: 50 => old way to do it
+  metrics:
+   # cpu an memory resources metrics do not change names from cluster to cluster and should always be available, as long as the metrics.k8s.io API is available.
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        # Specify a target average cpu utilization over all the pods that is represented as a percent of requested cpu. 
+        # Utilization is the ratio between the current resource usage to the requested resource of the pod.
+        type: Utilization 
+        averageUtilization: 80
+        # type: AverageValue
+        # averageValue: 400m
+#  - type: Resource
+#    resource:
+      # memory metric does not work well specially with applications that don't release unused memory rapidly
+#      name: memory
+#      target:
+        # Specify a target average memory utilization over all the pods that is represented as a percent of requested memory. 
+        # Utilization is the ratio between the current resource usage to the requested resource of the pod.
+#         type: Utilization 
+#         averageUtilization: 80
+        # type: AverageValue
+        # averageValue: 200Mi
+        
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300 # the safest (largest) "desiredReplicas" number during last stabilizationWindowSeconds should be picked.
+      selectPolicy: Max # Max to use the policy that allows the highest amount of change
+      policies:
+      # means at most all the replicas can be scaled down in one minute (the scaling target is scaled down to the minimum allowed replicas).
+      - type: Percent
+        periodSeconds: 15 # scaleDown iteration period
+        value: 100 # Percentage of pods to remove at most
+            
+    scaleUp:
+      stabilizationWindowSeconds: 0 # the safest (smallest) "desiredReplicas" number during last stabilizationWindowSeconds should be picked.
+      selectPolicy: Max # Max to use the policy that allows the highest amount of change
+      policies:
+      # means at most the number of replicas can be doubled every minute.
+      - type: Percent
+        periodSeconds: 15 # scaleUp iteration period
+        value: 100 # Percentage of pods to add at most
+      # means at most 4 replicas can be added every minute.
+      - type: Pods
+        periodSeconds: 15 # scaleUp iteration period
+        value: 3 # Number of pods to add at most
+      
+        

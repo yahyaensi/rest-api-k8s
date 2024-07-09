@@ -1,0 +1,130 @@
+apiVersion: apps/v1
+kind: Deployment # Kubernetes resource kind we are creating
+metadata:
+  name: rest-api-deployment
+spec:
+  selector:
+    matchLabels:
+      app: rest-api
+  # replicas: 3 # Number of replicas that will be created initially for this deployment (it's recommended to deactivate it if HPA is enabled, default value = 1, but in HPA minReplicas = 3)
+  strategy:
+    # A rolling update allows a Deployment update to take place with zero downtime. It does this by incrementally replacing the current Pods with new ones. 
+    # The new Pods are scheduled on Nodes with available resources, and Kubernetes waits for those new Pods to start before removing the old Pods.
+    type: RollingUpdate
+    # type: Recreate # All old pods are terminated before any new pods are added.
+                     # Recreate can be useful if you are running a pod as a singleton, and having a duplicate pod for even a few seconds is not acceptable.
+    rollingUpdate:
+      # Example : an update to a Deployment with 8 pods (replicas: 8) with maxSurge: 25% and maxUnavailable: 25%: 
+      #           At most 10 pods (8 desired pods + 2 maxSurge pods) will be Ready during the update
+      #           At least 6 pods (8 desired pods - 2 maxUnavailable pods) will always be Ready during the update
+      # maxSurge and maxUnavailable are used only in case of RollingUpdate strategy and they cannot both be zero.
+      maxSurge: 1 # The number or % (rounded down) of pods (comparing to replicas) that can be created above the desired amount of pods during an update
+      maxUnavailable: 0 # The number or % (rounded down) of pods (comparing to replicas) that can be unavailable during the update process
+  template:
+    metadata:
+      labels:
+        app: rest-api
+    spec:
+      # configure a grace period for the kubelet to wait between triggering a shut down of the failed container, and then forcing the container runtime to stop that container
+      # The default is 30 seconds if not specified, and the minimum value is 1
+      terminationGracePeriodSeconds: 60  
+      containers:
+        - name: rest-api
+          image: rest-api:1.0 # Image that will be used to containers in the cluster
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: container-port
+              containerPort: 8080 # The port that the container is running on in the cluster
+          resources:
+            requests:
+              # In order for the memory autoscaling to scale down correctly, the request memory must be estimated after a stress test 
+              # because Spring Boot loads classes lazely so the memory consumption after a stress test will still higher than startup memory consumption
+              # which can prevent scaling down from happening if the average memory utilization still higher than HPA's memory averageUtilization threshold
+              memory: "200Mi"
+              cpu: "400m"
+            limits:
+              memory: "250Mi"
+              cpu: "500m"
+              
+          # The kubelet executes startupProbe, readinessProbe and livenessProbe. 
+          # The kubelet considers any HTTP code greater than or equal to 200 and less than 400 as success.
+          # The kubelet considers any other HTTP code as failure.
+              
+          # startupProbe protectes slow starting containers with a (failureThreshold * periodSeconds) long enough to cover the worst case startup time 
+          # and avoid container getting killed by the kubelet (liveness probe) before it's up and running.
+          # If a startup probe is defined, liveness and readiness probe do not begin until the startup probe has succeeded.
+          # 
+          # In this example, thanks to the startup probe, the application will have a maximum of 5 minutes (30 * 10 = 300s) to finish its startup. 
+          # Once the startup probe has succeeded once, the liveness probe takes over to provide a fast response to container deadlocks.
+          # If the startup probe never succeeds, the container is killed after 300s and subject to the pod's restartPolicy.
+          startupProbe:
+            httpGet:
+              path: /started
+              port: container-port
+            periodSeconds: 10 # Interval between subsequent probe checks.
+            timeoutSeconds: 2 # Number of seconds after which the probe times out.
+            successThreshold: 1 # Minimum consecutive probe successes to consider the container started successfully. Must be 1 for startup probe.
+            failureThreshold: 30 # Minimum consecutive probe failure to restart the container (with respect to terminationGracePeriodSeconds).
+            
+          # Readiness probe determine whether a container is ready to receive network traffic or not.*
+          # Readiness probe does not begin until the startup probe has succeeded.
+          # Readiness probes allow the deployment to gradually update pods while giving you the control to determine when the rolling update can proceed.
+          # Readiness probe is also used by Services to determine which pods should be included in a service's endpoints.
+          readinessProbe:
+            # initialDelaySeconds: 30 # Delay before the probe is first executed.
+            periodSeconds: 30 # Interval between subsequent probe checks.
+            timeoutSeconds: 2 # Number of seconds after which the probe times out.
+            successThreshold: 2 # Minimum consecutive probe successes to consider the container ready (kubelet sets the Ready condition on the Pod to true).
+            failureThreshold: 2 # Minimum consecutive probe failure to consider the container not ready (kubelet sets the Ready condition on the Pod to false).
+            httpGet:
+              path: /ready
+              port: container-port
+              
+          # Liveness probe determine whether a container is still running and functioning correctly or not.
+          # Liveness probe does not begin until the startup probe has succeeded.
+          # Liveness probes allow the kubelet to determine which pods need to be restarted according to their Restart Policy.
+          #
+          # A common pattern for liveness probes is to use the same low-cost HTTP endpoint as for readiness probes, but with a higher failureThreshold. 
+         # This ensures that the pod is observed as not-ready for some period of time before it is hard killed.
+          livenessProbe:
+            # initialDelaySeconds: 30 # Delay before the probe is first executed.
+            periodSeconds: 30 # Interval between subsequent probe checks.
+            timeoutSeconds: 2 # Number of seconds after which the probe times out.
+            successThreshold: 1 # Minimum consecutive probe successes to consider the container healthy after having failed. Must be 1 for liveness probe.
+            failureThreshold: 5 # Minimum consecutive probe failure to restart the container (with respect to terminationGracePeriodSeconds).
+            # terminationGracePeriodSeconds: 30 # Override pod-level terminationGracePeriodSeconds.
+            httpGet:
+              path: /alive
+              port: container-port
+               #httpHeaders:
+               #- name: Custom-Header
+               #  value: Awesome
+               #- name: Accept
+               #  value: application/json
+
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn # supported operators: In, NotIn, Exists and DoesNotExist
+                values:
+                - minikube # don't deploy pods in master node
+                
+#        # Pod anti-affinity is useful for ensuring that pods in a Deployment are not scheduled all on one node, 
+#        # on nodes that have specialized resources needed, a node in a certain zone or co-located with other pods.
+#        podAntiAffinity:
+#          # preferredDuringSchedulingIgnoredDuringExecution: # The rule could be ignored if it can not be applied
+#          requiredDuringSchedulingIgnoredDuringExecution:
+#          - weight: 100
+#            podAffinityTerm:
+#              # In this example, if we have 2 nodes and 2 pods, this ensures pods will land on separate nodes
+#              labelSelector:
+#                #matchExpressions: [{ key: app, operator: In, values: [rest-api] }]
+#                matchExpressions:
+#                - key: app
+#                  operator: In
+#                  values:
+#                  - rest-api
+#              topologyKey: kubernetes.io/hostname

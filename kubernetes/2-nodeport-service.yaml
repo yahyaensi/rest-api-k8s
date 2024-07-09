@@ -1,0 +1,14 @@
+#  Service is a resource which is created to make a single and fixed point of entry to a group of pods providing the same Service.
+apiVersion: v1 # Kubernetes API version
+kind: Service # Kubernetes resource kind we are creating
+metadata: # Metadata of the resource kind we are creating
+  name: rest-api-service
+spec:
+  selector:
+    app: rest-api # a selector that targets pods labeled with app: rest-api
+  type: NodePort # the service is available externally via the NodeIP of any node in the cluster at a random port between 30000-32767.
+  ports:
+    - protocol: "TCP" # Supported protocols for Service port: TCP (the default), UDP, SCTP.
+      port: 8080 # The service exposes port 8080, which is the port used by clients to access the service
+      targetPort: 8080 # The service forwards the traffic to the pods’ port 8080
+      nodePort: 30080 # tells Kubernetes to expose the service on port 30080 on every node in the cluster.

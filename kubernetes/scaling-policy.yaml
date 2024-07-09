@@ -1,0 +1,35 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hpa-resource-metrics-memory
+  namespace: default
+spec:
+  behavior:
+    scaleDown: # Specifies the direction for the scaling policy, either scaleDown or scaleUp. This example creates a policy for scaling down.
+      policies: # Defines the scaling policy.
+      - type: Pods # Determines if the policy scales by a specific number of pods or a percentage of pods during each iteration. The default value is pods.
+        value: 4 # Limits the amount of scaling, either the number of pods or percentage of pods, during each iteration. There is no default value for scaling down by number of pods.
+        periodSeconds: 60 # Determines the length of a scaling iteration. The default value is 15 seconds.
+      - type: Percent
+        value: 10 # The default value for scaling down by percentage is 100%.
+        periodSeconds: 60
+      # Determines which policy to use first, if multiple policies are defined. 
+      # Specify Max to use the policy that allows the highest amount of change.
+      #         Min to use the policy that allows the lowest amount of change.
+      #         Disabled to prevent the HPA from scaling in that policy direction. 
+      # The default value is Max.
+      selectPolicy: Min 
+      # Determines the time period the HPA should look back at desired states. The default value is 0.
+      # In this example, all desired states for the past 5 minutes are considered. This approximates a rolling maximum, 
+      # and avoids having the scaling algorithm frequently remove pods only to trigger recreating an equivalent pod just moments later.
+      stabilizationWindowSeconds: 300 
+    scaleUp: # This example creates a policy for scaling up.
+      policies:
+      - type: Pods
+        value: 5 # Limits the amount of scaling up by the number of pods. The default value for scaling up the number of pods is 4.
+        periodSeconds: 70
+      - type: Percent
+        value: 12 # Limits the amount of scaling up by the percentage of pods. The default value for scaling up by percentage is 100%.
+        periodSeconds: 80
+      selectPolicy: Max
+      stabilizationWindowSeconds: 0
