@@ -30,7 +30,7 @@ spec:
       terminationGracePeriodSeconds: 60  
       containers:
         - name: rest-api
-          image: rest-api:1.0 # Image that will be used to containers in the cluster
+          image: rest-api # Image that will be used to containers in the cluster
           imagePullPolicy: IfNotPresent
           ports:
             - name: container-port
