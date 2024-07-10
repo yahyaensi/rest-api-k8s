@@ -8,11 +8,11 @@
 # - Create LoadBalancer: kubectl apply -f ./kubernetes/4-loadbalancer-service.yaml
 # - Verify that LoadBalancer has an ExternalIP: kubectl get service -o wide
 # - If you want to delete all MetalLB components: kubectl delete all --all -n metallb-system
-apiVersion: v1
 kind: ConfigMap
+apiVersion: v1
 metadata:
-  namespace: metallb-system
   name: config
+  namespace: metallb-system
 data:
   config: |
     address-pools:

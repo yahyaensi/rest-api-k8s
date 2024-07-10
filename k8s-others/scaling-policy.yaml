@@ -1,8 +1,8 @@
-apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
+apiVersion: autoscaling/v2
 metadata:
   name: hpa-resource-metrics-memory
-  namespace: default
+  namespace: rest-api
 spec:
   behavior:
     scaleDown: # Specifies the direction for the scaling policy, either scaleDown or scaleUp. This example creates a policy for scaling down.

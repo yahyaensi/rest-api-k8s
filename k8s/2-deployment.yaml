@@ -1,7 +1,8 @@
-apiVersion: apps/v1
 kind: Deployment # Kubernetes resource kind we are creating
+apiVersion: apps/v1
 metadata:
   name: rest-api-deployment
+  namespace: rest-api
 spec:
   selector:
     matchLabels:
@@ -30,7 +31,7 @@ spec:
       terminationGracePeriodSeconds: 60  
       containers:
         - name: rest-api
-          image: rest-api-k8s # Image that will be used to containers in the cluster
+          image: "localhost:5000/rest-api-k8s:1.0.2" # Image that will be used to containers in the cluster
           imagePullPolicy: IfNotPresent
           ports:
             - name: container-port

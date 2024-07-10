@@ -1,10 +1,10 @@
 # apiVersion: autoscaling/v1 est la version par défaut et ne vous permet d'effectuer un autoscaling qu'en fonction de l'utilisation du processeur.
 # Pour effectuer un autoscaling à partir d'autres métriques, il est recommandé d'utiliser la version apiVersion: autoscaling/v2.
-apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
+apiVersion: autoscaling/v2
 metadata:
   name: rest-api-hpa
-  namespace: default
+  namespace: rest-api
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

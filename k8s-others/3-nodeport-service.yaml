@@ -1,8 +1,9 @@
 #  Service is a resource which is created to make a single and fixed point of entry to a group of pods providing the same Service.
-apiVersion: v1 # Kubernetes API version
 kind: Service # Kubernetes resource kind we are creating
+apiVersion: v1 # Kubernetes API version
 metadata: # Metadata of the resource kind we are creating
   name: rest-api-service
+  namespace: rest-api
 spec:
   selector:
     app: rest-api # a selector that targets pods labeled with app: rest-api

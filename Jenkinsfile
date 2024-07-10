@@ -11,8 +11,10 @@ pipeline {
         REPOSITORY = readMavenPom().getArtifactId()
         VERSION = readMavenPom().getVersion()
         IMAGE_NAME = "${REPOSITORY}:${VERSION}"
-        DOCKER_HUB_ACCOUNT_ID = 'yahyaromdhane'
-        TAG = "${DOCKER_HUB_ACCOUNT_ID}/${IMAGE_NAME}"
+        // DOCKER_HUB_ACCOUNT_ID = 'yahyaromdhane'
+        // DOCKER_HUB_TAG = "${DOCKER_HUB_ACCOUNT_ID}/${IMAGE_NAME}"
+        REGISTRY = "localhost:5000"
+        TAG = "${REGISTRY}/${IMAGE_NAME}"
     }
     
     stages {
@@ -35,20 +37,26 @@ pipeline {
             }
         }
         
-        stage ('Push docker image to registry') {
+        stage ('Push docker image to local registry') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerHubCredentials', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUsername')]) {
-                    sh 'docker tag ${IMAGE_NAME} ${TAG}'
-                    sh 'docker login -u ${dockerHubUsername} -p ${dockerHubPassword} docker.io'
-                    sh 'docker push ${TAG}'
-                }
+            	sh 'docker tag ${IMAGE_NAME} ${TAG}'
+                sh 'docker push ${TAG}'
             }
         }
         
+        /** stage ('Push docker image to Docker Hub registry') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerHubCredentials', passwordVariable: 'dockerHubPassword', usernameVariable: 'dockerHubUsername')]) {
+                    sh 'docker tag ${IMAGE_NAME} ${DOCKER_HUB_TAG}'
+                    sh 'docker login -u ${dockerHubUsername} -p ${dockerHubPassword} docker.io'
+                    sh 'docker push ${DOCKER_HUB_TAG}'
+                }
+            }
+        }*/
+        
         stage ('Deploy in K8S') {
             steps {
-                kubeconfig(caCertificate: '', credentialsId: 'kubeConfig', serverUrl: 'https://127.0.0.1:32771') {
-               		sh '/usr/local/bin/minikube image load ${IMAGE_NAME}'
+                kubeconfig(caCertificate: '', credentialsId: 'kubeConfig', serverUrl: 'https://127.0.0.1:32846') {
                		sh 'kubectl apply -f "kubernetes/1-deployment.yaml"'
                		sh 'kubectl apply -f "kubernetes/3-hpa-resources.yaml"'
                		sh 'kubectl apply -f "kubernetes/4-loadbalancer-service.yaml"'

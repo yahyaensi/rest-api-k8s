@@ -1,8 +1,8 @@
-apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
+apiVersion: autoscaling/v2
 metadata:
   name: rest-api-hpa
-  namespace: default
+  namespace: rest-api
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
