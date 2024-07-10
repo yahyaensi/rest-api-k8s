@@ -48,6 +48,7 @@ pipeline {
         stage ('Deploy in K8S') {
             steps {
                 kubeconfig(caCertificate: '', credentialsId: 'kubeConfig', serverUrl: 'https://127.0.0.1:32771') {
+               		sh '/usr/local/bin/minikube image load ${IMAGE_NAME}'
                		sh 'kubectl apply -f "kubernetes/1-deployment.yaml"'
                		sh 'kubectl apply -f "kubernetes/3-hpa-resources.yaml"'
                		sh 'kubectl apply -f "kubernetes/4-loadbalancer-service.yaml"'
